@@ -1,15 +1,26 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { initLocalDatabase } from '@/lib/database';
+import { supabase } from '@/lib/supabase';
+import { Slot, router } from 'expo-router';
+import { useEffect, useState, } from 'react';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
-  );
+  const [initialized, setInitialized] = useState(false)
+
+  useEffect(() => {
+    initLocalDatabase()
+    
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.replace('./(app)/home')
+      } else {
+        router.replace('./(auth)/login')
+      }
+      setInitialized(true)
+    })
+  }, [])
+
+  if (!initialized) return null
+
+  return <Slot />
 }

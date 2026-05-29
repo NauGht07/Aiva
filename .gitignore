@@ -11,6 +11,7 @@ expo-env.d.ts
 
 .vscode
 .claude
+node_modules
 
 # Native
 .kotlin/
