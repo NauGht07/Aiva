@@ -4,7 +4,7 @@ import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { createOnboardingScreenStyles } from '@/styles/onboarding-screen';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { router, type Href } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -17,16 +17,11 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const STEP_COUNT = 4;
+// Onboarding SLM calls
+import { extractOnboardingHabits } from '@/lib/slm';
 
-function restateHabit(raw: string) {
-  let text = raw.trim().replace(/[.!?]+$/, '');
-  text = text.replace(
-    /^(to\s+|i want to\s+|i've been meaning to\s+|i need to\s+|i should\s+)/i,
-    '',
-  );
-  return text.toLowerCase();
-}
+
+const STEP_COUNT = 4;
 
 function defaultCheckInTime() {
   const date = new Date();
@@ -50,6 +45,11 @@ export default function OnboardingScreen() {
   const trimmedName = name.trim();
   const trimmedHabit = habit.trim();
 
+  //Onboarding goals Slm extraction stuff
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
   const inputStyle = useMemo(
     () => [styles.textInput, { borderBottomColor: theme.border }],
     [styles.textInput, theme.border],
@@ -67,7 +67,7 @@ export default function OnboardingScreen() {
       case 1:
         return `good to meet you ${trimmedName}. what's one thing you've been meaning to build into your routine but keep failing at?`;
       case 2:
-        return `got it. sounds like you want to ${restateHabit(trimmedHabit)}. want me to add that as your first habit?`;
+        return `got it. sounds like you want to ${(trimmedHabit)}. want me to add that as your first habit?`;
       case 3:
         return 'when do you want me to check in with you about this?';
       default:
@@ -85,9 +85,33 @@ export default function OnboardingScreen() {
     }
   }, [step]);
 
-  const goToNextStep = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    console.log('input being sent:', trimmedHabit)
+    const result = await extractOnboardingHabits(trimmedHabit)
+    console.log('result from SLM:', result)
+
+    if (!result) {
+      setError("Couldn't extract habits. Try again.")
+      setLoading(false)
+      return
+    }
+
+    //update the next screen's message only for now. 
+    setHabit((result))
+
+    setLoading(false)
+
+  }, [trimmedHabit])
+
+  const goToNextStep = useCallback(async () => {
+    if (step === 1) {
+      await handleSubmit()
+    }
     setStep((current) => Math.min(current + 1, STEP_COUNT - 1));
-  }, []);
+  }, [step, handleSubmit]);
 
   const onFinish = useCallback(() => {
     if (finishing) return;
@@ -106,6 +130,8 @@ export default function OnboardingScreen() {
     (step === 1 && trimmedHabit.length > 0) ||
     step === 2 ||
     step === 3;
+
+  //Onboarding goals submission
 
   return (
     <SafeAreaView style={styles.screen}>

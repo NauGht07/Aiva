@@ -3,12 +3,16 @@ import { supabase } from '@/lib/supabase';
 import { Slot, router } from 'expo-router';
 import { useEffect, useState, } from 'react';
 
+import { initSLM } from '@/lib/slm';
+
 
 export default function TabLayout() {
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
     initLocalDatabase()
+
+    initSLM()
     
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
